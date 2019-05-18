@@ -1,0 +1,47 @@
+---
+title: "Who are the elected representatives?"
+output:
+html_document: default
+css: styles.css
+---
+
+```{r= setup, include=FALSE}
+address1 <- "2199 S University Blvd, Denver, CO 80208"
+
+address2 <- "Puyallup, WA"
+```
+
+# This is a list of all elected representatives for two US locations.
+
+This is a report about the political representatives for residents of **`r address1`** and **`r address2`**. The data is extracted from [Google Civic Data API.](https://developers.google.com/civic-information/). The table includes the **Position, Name, Party, Email address, Phone, and Photo** of the representatives.
+
+## Representatives for `r address1`
+
+```{r setup, include=FALSE}
+
+library(knitr)
+library(httr)
+library(jsonlite)
+library(stringr)
+library(dplyr)
+source("~/Documents/keys.R")
+source('process-data.R')
+knitr::opts_chunk$set(echo=FALSE, message=FALSE)
+
+```
+
+
+```{r}
+tbl <- repTable(address1)
+knitr::kable(tbl)
+
+```
+
+## Representatives for `r address2`
+
+
+```{r}
+tbl <- repTable(address2)
+knitr::kable(tbl)
+```
+

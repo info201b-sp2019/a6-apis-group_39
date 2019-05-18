@@ -1,33 +1,67 @@
-### This file will contain your main code.
-### Feel free to rename it, or split it into several files.
-###
-### Your final product should contain the code along the following lines:
-### the main part of it should be a function (e.g. 'repTable') that takes
-### address as the argument, and returns a markdown table of representatives.
+### This file will contain the main code.
 
-##    ---------- Google Civic Platform ----------
-## 1. create the google civic platform request and httr::GET() the result
-##    you need to include your api key in the request.  See the documentation
-##    https://developers.google.com/civic-information/
-##    in particular the reference section.
-##
-##    There is also console where you can experiment with requests and see what do
-##    these return.
-##
-##    Note: you can submit the requests through your browser.  If unsure, or if
-##    httr::GET gives you an error, you may always put the address in your browser's
-##    address bar.  If correct, it will display the corresponding JSON data.  If
-##    incorrect, you get an error message.
+library(httr)
+library(jsonlite)
+library(dplyr)
+library(stringr)
+library(knitr)
+source("~/Documents/keys.R")
 
-## 2. extract the elected officials' data from the result
-##    The data contains many relevant variables, including normalized address,
-##    'offices' and 'officials'.  In order to attach the officials (people)
-##    with offices (jobs), I recommend to use dplyr joins (what would be the key?)
-##    More about joins in
-##    http://r4ds.had.co.nz/relational-data.html
+##API Call
+repTable <- function(address1){
+base_uri <- "https://www.googleapis.com/civicinfo/v2/"
+resource <- "representatives?"
 
-## 3. transform the data into a well formatted table
-##    I recommend you transform the data into markdown strings.  For instance,
-##    to display a html link as a link in the markdown file, you may want to
-##    embed it between "[](" and ")".  You may format emails as
-##    "[john@example.com](mailto:john@example.com)" to make these into a link.
+query_params <- list(key = google.key, address = address1)
+response <- GET(paste0(base_uri, resource), query = query_params)
+
+response_content <- content(response, "text")
+
+parsed_data <- fromJSON(response_content)
+offices <- parsed_data$offices
+offices <- flatten(offices)
+officials <- parsed_data$officials
+officials <- flatten(officials)
+
+input <- parsed_data$normalizedInput
+
+state_input <- input$state
+
+officials <- select(officials, name, party, emails, phones, urls, photoUrl)
+
+office <- tidyr::unnest(offices, officialIndices)
+colnames(office)[1] <- "office"
+
+data <- mutate(officials, officialIndices = strtoi(row.names(officials)) - 1) %>% left_join(office)
+
+#Selecting the columns to be displayed
+final_data <- select(data, office, name, party, emails, phones, photoUrl)
+
+#Renaming the columns of the data
+colnames(final_data)[1] <- "Position"
+colnames(final_data)[2] <- "Name"
+colnames(final_data)[3] <- "Party"
+colnames(final_data)[4] <- "Email"
+colnames(final_data)[5] <- "Phone"
+colnames(final_data)[6] <- "Photo"
+
+data <- data %>% replace(.=="NULL", "")
+
+final_data <- final_data %>% replace(is.na(final_data), "NULL")
+
+final_data <- final_data %>% replace(.=="NULL", "-")
+
+final_data <- final_data %>% replace(.=="NA", "-")
+
+final_data$Name <- paste0("[", final_data$Name, "](", data$urls, ")")
+
+final_data$Photo <- paste0("![alt text](", final_data$Photo, ")")
+
+final_data <- final_data %>% replace(.=="![alt text]()", "-")
+
+final_data <- final_data %>% replace(.=="NA", "-")
+
+final_data <- final_data %>% replace(.=="![alt text](-)", "-")
+
+return(final_data)
+}
